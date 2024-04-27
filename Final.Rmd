@@ -1,0 +1,227 @@
+---
+title: "Video Game Sales Data Analysis"
+author: "Rohan Gupta, Kayleigh Derwin, Will Bolger"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+# Introduction
+
+This document contains analyses and visualizations for video games sales accross different regions of the world.
+
+# Setup
+
+```{r}
+# Check and install necessary libraries
+packages <- c("ggplot2", "dplyr", "knitr", "kableExtra", "readr", "tidyr")
+
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+# Uncomment the line bellow to change the working directory
+# setwd("< Path to your working directory >")
+```
+
+
+## This report aims to answer 3 questions about the video games sales using the data
+
+Q1. How are the various publishers performing in different regions of the world when it comes to sale of their games?
+
+Q2. Does the genre of the game affect its sales? What genre of game is most popular among each region of the world?
+
+Q3. Are there any stand out games per year that made a publisher really successfull or unsuccessful?
+
+
+## Understanding the Database
+
+For this project we are using a CSV file as our source of data. This file named "PS4_GamesSales.csv" has been sources from Kaggle.
+
+The data has 1,301 entries that specify the name, year of release, genre, publisher, and sales accross different continents of the world for video games until the end of the year 2018.
+
+Loading the data
+```{r}
+data <- read.csv("PS4_GamesSales.csv")
+```
+
+Displaying the top ten rows of the data to provide a glimps of the data
+
+```{r}
+# Extract the top five entries from the dataset
+top_five_entries <- head(data, 5)
+
+# Create a nicely formatted table using kable and kableExtra
+kable_styled <- kable(top_five_entries, format = "html", caption = "Top Five PS4 Game Sales", align = 'l') %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  add_header_above(c(" " = 1, "Game Data" = 3, "Regional Sales in Millions" = 5)) %>%  
+  column_spec(1, bold = TRUE, border_right = TRUE, extra_css = "border-bottom: 1px solid #dddddd;") %>%
+  column_spec(2:9, extra_css = "border-right: 1px solid #dddddd; border-bottom: 1px solid #dddddd;") %>%
+  scroll_box(width = "100%", height = "300px")
+
+# Print the styled table
+kable_styled
+```
+
+
+## Question 1
+
+
+#### How are the various publishers performing in different regions of the world when it comes to sale of their games?
+
+The following chart displays the total sales of the given publisher according to each region and annually
+```{r}
+# Relace the value for variable provided with the name of the desired publisher
+publisher <- "EA Sports"
+
+# Filter data for the specified publisher "Rockstar Games"
+publisher_data <- data %>%
+  filter(Publisher == publisher)
+
+# Summarize sales by year and region
+annual_sales_by_region <- publisher_data %>%
+  group_by(Year) %>%
+  summarise(
+    Sales_North_America = sum(North_America, na.rm = TRUE),
+    Sales_Europe = sum(Europe, na.rm = TRUE),
+    Sales_Japan = sum(Japan, na.rm = TRUE),
+    Sales_Rest_of_World = sum(Rest_of_World, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = starts_with("Sales"),
+    names_to = "Region",
+    values_to = "Sales"
+  )
+
+# Create the stacked bar chart
+ggplot(annual_sales_by_region, aes(x = as.factor(Year), y = Sales, fill = Region)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(title = paste("Annual Sales Distribution by Region for", publisher),
+       x = "Year",
+       y = "Sales (Millions)",
+       fill = "Region") +
+  scale_y_continuous(labels = scales::comma)
+
+```
+
+
+
+## Question 2
+
+#### Does the genre of the game affect its sales? What genre of game is most popular among each region of the world?
+
+
+First finding the total sales of games by genre overall the world
+
+```{r}
+# Aggregate global sales by genre
+genre_sales_Global <- data %>%
+  group_by(Genre) %>%
+  summarize(Total_Global_Sales = sum(Global, na.rm = TRUE)) %>%
+  arrange(desc(Total_Global_Sales))
+
+# Create a bar chart comparing genres based on global sales
+ggplot(genre_sales_Global, aes(x = Genre, y = Total_Global_Sales, fill = Genre)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Global Sales by Genre", x = "Genre", y = "Total Global Sales (Millions)")
+```
+
+This graphs showed that the top three genres of games with most sales are:
+
+###### 1. Shooter
+###### 2. Action
+###### 3. Sports
+
+
+#### Sales in Different Regions of the world
+
+The following set of bar graphs display the total sales of games by genre in each region of the world
+```{r plot, fig.width=10, fig.height=6, out.width='100%'}
+# Aggregate sales by genre for each region
+genre_sales <- data %>%
+  group_by(Genre) %>%
+  summarize(
+    Sales_North_America = sum(North_America, na.rm = TRUE),
+    Sales_Europe = sum(Europe, na.rm = TRUE),
+    Sales_Japan = sum(Japan, na.rm = TRUE),
+    Sales_Rest_of_World = sum(Rest_of_World, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = starts_with("Sales"),
+    names_to = "Region",
+    values_to = "Sales"
+  )
+
+# Create a faceted bar chart for all regions with modified x-axis
+ggplot(genre_sales, aes(x = Genre, y = Sales, fill = Genre)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Region, scales = "free_y") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Sales by Genre across Different Regions", x = "", y = "Sales (Millions)") +
+  guides(fill = guide_legend(title = "Genre"))
+
+```
+
+
+For a better understanding of the top performing genres, the followning table displays the top 3 performing genres in each region of the world
+```{r}
+# Function to get top 3 genres in a specific region and reshape for table
+get_top_genres_reshaped <- function(data, sales_column, region_name) {
+  top_genres <- data %>%
+    group_by(Genre) %>%
+    summarise(Total_Sales = sum(!!sym(sales_column), na.rm = TRUE)) %>%
+    arrange(desc(Total_Sales)) %>%
+    slice_head(n = 3) %>%
+    mutate(Region = region_name,
+           Rank = paste0("Rank_", row_number()),  # Create a ranking label for merging
+           Genre_Sales = paste(Genre, "(", Total_Sales, "M)")) %>%  # Combine genre and sales
+    select(Region, Rank, Genre_Sales) %>%
+    pivot_wider(names_from = Rank, values_from = Genre_Sales)  # Reshape data to wide format
+  return(top_genres)
+}
+
+# Get top 3 genres for each region, reshaped
+top_genres_North_America <- get_top_genres_reshaped(data, "North_America", "North America")
+top_genres_Europe <- get_top_genres_reshaped(data, "Europe", "Europe")
+top_genres_Japan <- get_top_genres_reshaped(data, "Japan", "Japan")
+top_genres_Rest_of_World <- get_top_genres_reshaped(data, "Rest_of_World", "Rest of the World")
+top_genres_Global <- get_top_genres_reshaped(data, "Global", "Global")
+
+# Combine all regions into one dataframe
+top_genres_all_regions <- bind_rows(
+  top_genres_North_America,
+  top_genres_Europe,
+  top_genres_Japan,
+  top_genres_Rest_of_World,
+  top_genres_Global
+)
+
+# Display the table using kable and kableExtra for enhanced formatting
+table_output <- kable(top_genres_all_regions, format = "html", caption = "Top 3 Genres by Sales in Each Region") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(0, bold = TRUE, background = "#4D5B69", color = "white") %>%  # Style header row
+  column_spec(1, width = "20%", border_right = TRUE) %>%  # Style first column with a border
+  column_spec(2, width = "25%", border_right = TRUE) %>%  # Style second column with a border
+  column_spec(3, width = "25%", border_right = TRUE) %>%  # Style third column with a border
+  column_spec(4, width = "25%", border_right = TRUE) %>%  # Style fourth column with a border
+  scroll_box(width = "100%", height = "300px")  # Adds a scroll box if the table is too long
+
+# Print the styled table
+table_output
+```
+
+#### Fun fact observed in the data
+
+An intriguing observation from our analysis of video game genre sales across different global regions reveals a distinct pattern. While the preferences for game genres in North America, Europe, and the Rest of the World—including the global market—tend to align closely across various rankings, Japan consistently demonstrates unique preferences that set it apart. This distinct difference in genre popularity not only highlights the top three genres but extends throughout the entire spectrum of game genres. This phenomenon underscores Japan's unique gaming culture and market dynamics, which are markedly different from other regions, reflecting broader cultural and consumer taste variations.
+
+
+
