@@ -224,4 +224,119 @@ table_output
 An intriguing observation from our analysis of video game genre sales across different global regions reveals a distinct pattern. While the preferences for game genres in North America, Europe, and the Rest of the World—including the global market—tend to align closely across various rankings, Japan consistently demonstrates unique preferences that set it apart. This distinct difference in genre popularity not only highlights the top three genres but extends throughout the entire spectrum of game genres. This phenomenon underscores Japan's unique gaming culture and market dynamics, which are markedly different from other regions, reflecting broader cultural and consumer taste variations.
 
 
+## Question 3
+
+#### Are there any stand out games per year that made a publisher really successfull or unsuccessful?
+
+This question is slightly more complicated as compared to the other 2 questions this report deals with. Thus to answer this question we would follow a step wise program discribed below:
+
+Step 1: Find out the highest grossing video game from all publishers.
+
+Step 2: Find the mean of the global sales for all video games that came before and after the highest grossing video game. Both before and after mean should be stored seperatly.
+
+Step 3: Compare the difference between the before and after mean. Also compare the after mean with the sales of the highest grossing game. If there is a huge positive difference between the before sales mean and after sales mean and the after sales mean and sales of the highest grossing game are close to one and other. This would indicate the highpothesis was correct, and stand out games do help make publishers more successful.
+
+<br>
+
+#### Step 1:
+```{r}
+# Find the highest grossing game globally from each publisher
+highest_grossing_games <- data %>%
+  group_by(Publisher) %>%
+  filter(Global == max(Global)) %>%
+  summarise(Game = first(Game), 
+            Year = first(Year), 
+            Global_Sales = max(Global)) %>%
+  ungroup() %>%
+  arrange(desc(Global_Sales))
+
+# Create an enhanced table using kable and kableExtra
+table_output <- kable(highest_grossing_games, format = "html", 
+                      caption = "Highest Grossing Games by Publisher Globally") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, width = "20%") %>%
+  column_spec(3, width = "10%") %>%
+  column_spec(4, width = "10%", color = "blue") %>%
+  scroll_box(width = "100%", height = "400px")
+
+# Print the styled table
+table_output
+```
+
+<br>
+
+#### Step 2:
+```{r}
+# Extend the data frame to include more metrics
+extended_data <- data %>%
+  group_by(Publisher) %>%
+  mutate(Highest_Global_Sales = max(Global)) %>%
+  filter(Global == Highest_Global_Sales) %>%
+  summarise(
+    Game = first(Game),
+    Year = first(Year),
+    Global_Sales = first(Global),
+    Mean_Before = mean(data$Global[data$Publisher == first(Publisher) & data$Year < first(Year)], na.rm = TRUE),
+    Mean_After = mean(data$Global[data$Publisher == first(Publisher) & data$Year > first(Year)], na.rm = TRUE)
+  ) %>%
+  arrange(desc(Global_Sales))
+
+# Create an enhanced table using kable and kableExtra
+table_output <- kable(extended_data, format = "html", 
+                      caption = "Highest Grossing Games by Publisher Globally with Mean Sales Before and After") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, width = "15%") %>%
+  column_spec(3, width = "10%") %>%
+  column_spec(4, width = "10%", color = "blue") %>%
+  column_spec(5, width = "15%", color = "red") %>%
+  column_spec(6, width = "15%", color = "green") %>%
+  scroll_box(width = "100%", height = "400px")
+
+# Print the styled table
+table_output
+```
+
+<br>
+
+#### Step 3:
+```{r}
+# Calculate mean sales before and after the highest grossing game for each publisher
+mean_sales_data <- data %>%
+  group_by(Publisher) %>%
+  summarize(
+    Highest_Global_Sales = max(Global),
+    Year_of_Highest_Sales = Year[which.max(Global)],
+    Mean_Before = mean(Global[Year < Year_of_Highest_Sales], na.rm = TRUE),
+    Mean_After = mean(Global[Year > Year_of_Highest_Sales], na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Calculate the overall mean of these averages
+overall_mean_before = mean(mean_sales_data$Mean_Before, na.rm = TRUE)
+overall_mean_after = mean(mean_sales_data$Mean_After, na.rm = TRUE)
+
+# Print the results
+cat("Overall Mean of Average Sales Before the Best Seller: ", overall_mean_before, "\n")
+cat("Overall Mean of Average Sales After the Best Seller: ", overall_mean_after, "\n")
+```
+
+<br>
+
+Here it can be observed that the average sales after the release of the best selling video game is lower than the average sales before the best selling video game. This indicatest that the prediction was wrong.
+
+
+## Conclusion
+
+The performance of each publisher can be noted in the charts associated with questions 1
+
+Overall the top 3 genres for video game sales are are shooter, action and sports. However, this trend changes for Japan.
+
+The best selling games for any publisher generally lowers their sales by approximately 500,000 on average.
+
+
+
+
+
 
