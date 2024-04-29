@@ -324,7 +324,7 @@ cat("Overall Mean of Average Sales After the Best Seller: ", overall_mean_after,
 
 <br>
 
-Here it can be observed that the average sales after the release of the best selling video game is lower than the average sales before the best selling video game. This indicatest that the prediction was wrong.
+Here it can be observed that the average sales after the release of the best selling video game is lower than the average sales before the best selling video game. This indicates that the prediction was wrong.
 
 
 ## Conclusion
